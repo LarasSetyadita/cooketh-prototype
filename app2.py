@@ -55,7 +55,6 @@ def get_step_from_llama(chat_history):
     except Exception as e:
         print(f"Gagal menggunakan API: {e}")
         return "Maaf, saya tidak bisa mendapatkan informasi"
-
 def speak(text, lang=BAHASA):
     """Membacakan hasil generative"""
     tts = gTTS(text=text, lang=lang)
@@ -71,6 +70,34 @@ def speak(text, lang=BAHASA):
 
     pygame.mixer.music.unload()
     os.remove(filename)
+
+def command_classification(command):
+    url = "https://api.together.xyz/v1/chat/completions"
+    command_class = (
+        "Klasifikasikan teks perintah ini untuk lanjut ke langkah berikutnya, ulangi membaca langkah saat ini, membaca langkah sebelumnya, bertanya tentang sesuatu, meminta pewaktu, meminta proses memasak selesai, atau perintah tidak dikenali. "
+        "Ketikkan 1 untuk lanjut ke langkah berikutnya, ketikkan 2 untuk membaca ulang langkah saat ini, ketikkan 3 untuk kembali ke langkah sebelumnya, ketikkan 4 untuk bertanya tentang sesuatu, ketikkan 5 untuk meminta pewaktu, ketikkan 6 untuk proses memasak dihentikan, dan ketikkan 7 apabila perintah tidak dikenali. "
+        "Jangan berikan output apapun kecuali salah satu dari angka tersebut!"
+    )
+
+    headers = {
+        "Authorization" : f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "meta-llama/Llama-3-8b-chat-hf",
+        "messages": [
+            {"role": "system", "content": command_class},
+            {"role": "user", "content": command}
+        ]
+    }
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        return result['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"Gagal menggunakan API: {e}")
+        return "Maaf, saya tidak bisa mendapatkan informasi"
 
 
 def main():
@@ -89,17 +116,17 @@ def main():
                 "Kamu adalah asisten memasak yang membacakan langkah demi langkah resep masakan.\n"
                 "Hanya gunakan Bahasa Indonesia.\n"
                 "Berikan hanya 1 langkah memasak setiap kali diminta.\n"
-                "Tunggu perintah 'lanjut' untuk memberikan langkah selanjutnya.\n"
+                "Perintah 'lanjut' untuk memberikan langkah selanjutnya.\n"
                 "Perintah 'ulangi' untuk mengulang langkah saat ini.\n"
                 "Perintah 'sebelumnya' untuk membacakan langkah sebelumnya.\n"
-                "Jangan menulis karakter *"
+                "Jangan menulis karakter '*'"
             )
         },
         {
             "role" : "user",
             "content" : (
                 f"Buat langkah memasak dari resep berikut: \n{resep_text}.\n"
-                "Bacakan dulu judul resep dan bahan-bahannya."
+                "Bacakan dulu hanya judul resep apa yang akan dimasak dan bahan-bahannya.\n"
             )
 
 
@@ -116,18 +143,35 @@ def main():
 
     while True:
         command = input("Masukkan perintah: ")
+        command_class = command_classification(command)
 
-        if any(word in command for word in['selesai', 'cukup', 'done', "i'm done"]):
+        if command_class == "6":
             goodbye = "Sesi memasak selesai! Selamat menikmati masakanmu"
             print(f"{goodbye}")
             speak(goodbye)
             break
-        elif any(word in command for word in ["lanjut", "next", "terus", "selanjutnya"]):
+        elif command_class == "1":
             chat_history.append({"role": "user", "content": "lanjutkan ke langkah berikutnya."})
             step = get_step_from_llama(chat_history)
             print(f"\n {step}")
             speak(step)
             chat_history.append({"role": "assistant", "content": step})
+        elif command_class == "2":
+            chat_history.append({"role": "user", "content": "ulangi langkah ini."})
+            step = get_step_from_llama(chat_history)
+            print(f"\n {step}")
+            speak(step)
+            chat_history.append({"role": "assistant", "content": step})
+        elif command_class == "3":
+            chat_history.append({"role": "user", "content": "bacakan langkah sebelumnya."})
+            step = get_step_from_llama(chat_history)
+            print(f"\n {step}")
+            speak(step)
+            chat_history.append({"role": "assistant", "content": step})
+        elif command_class == "4":
+            print("silakan bertanya")
+        elif command_class == "5":
+            print("Memulai waktu")
         else:
             speak("Perintah tidak dikenali. Ucapkan lanjut atau selesai")
 
