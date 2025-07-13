@@ -107,13 +107,6 @@ def main():
 
     ]
 
-    """command_class = [
-        "Klasifikasikan teks perintah ini untuk lanjut ke langkah berikutnya, ulangi membaca langkah saat ini, membaca langkah sebelumnya, bertanya tentang sesuatu, meminta pewaktu, atau meminta proses memasak selesai"
-        "Ketikkan 1 untuk lanjut ke langkah berikutnya, ketikkan 2 untuk membaca ulang langkah saat ini, ketikkan 3 untuk kembali ke langkah sebelumnya, ketikkan 4 untuk bertanya tentang sesuatu, ketikkan 5 untuk meminta pewaktu, dan ketikkan 6 untuk proses memasak dihentikan"
-        "Jangan berikan output apapun kecuali salah satu dari angka tersebut!"
-    ]"""
-
-
     # langkah-langkah
     # intro pembuka
     step = get_step_from_llama(chat_history)
