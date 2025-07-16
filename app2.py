@@ -1,3 +1,7 @@
+"""
+Asisten Memasak Hands Free
+"""
+
 # import library yang dibutuhkan
 from asyncio import timeout
 from fileinput import filename
@@ -100,6 +104,44 @@ def command_classification(command):
         return "Maaf, saya tidak bisa mendapatkan informasi"
 
 
+def question(resep_text, quest):
+    url = "https://api.together.xyz/v1/chat/completions"
+
+    # Prompt sistem
+    system_prompt = (
+        "Kamu adalah asisten memasak yang membantu menjawab pertanyaan seputar bahan dan langkah memasak dari resep berikut.\n"
+        f"{resep_text}\n"
+        "Berikan jalan keluar atas permasalahannya."
+        "Katakan tidak bisa, atau akan sangat mengubah rasa jika permasalahan yang ditanyakan adalah hal fatal."
+        "Jawabanmu harus relevan, ringkas, dan tidak keluar dari konteks resep tersebut.\n"
+        "Sesuaikan jawaban agar rasa masakan tidak menjadi aneh."
+        "Gunakan kata ganti orang kedua tunggal."
+        "output 1-3 kalimat saja, dilarang lebih dari itu"
+    )
+
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "meta-llama/Llama-3-8b-chat-hf",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": quest}
+        ]
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        return result['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        print(f"Gagal menggunakan API: {e}")
+        return "Maaf, saya tidak bisa mendapatkan informasi"
+
+
 def main():
     # Kode untuk membaca resep dari file json
     resep_text = load_resep(RESEP_FILE)
@@ -116,10 +158,8 @@ def main():
                 "Kamu adalah asisten memasak yang membacakan langkah demi langkah resep masakan.\n"
                 "Hanya gunakan Bahasa Indonesia.\n"
                 "Berikan hanya 1 langkah memasak setiap kali diminta.\n"
-                "Perintah 'lanjut' untuk memberikan langkah selanjutnya.\n"
-                "Perintah 'ulangi' untuk mengulang langkah saat ini.\n"
-                "Perintah 'sebelumnya' untuk membacakan langkah sebelumnya.\n"
-                "Jangan menulis karakter '*'"
+                "Dilarang menulis karakter '*'"
+                "Jangan menawarkan langkah-langkah"
             )
         },
         {
@@ -127,6 +167,8 @@ def main():
             "content" : (
                 f"Buat langkah memasak dari resep berikut: \n{resep_text}.\n"
                 "Bacakan dulu hanya judul resep apa yang akan dimasak dan bahan-bahannya.\n"
+                "Dilarang menulis karakter'*'"
+                "gunakan kata ganti orang kedua tunggal"
             )
 
 
@@ -168,16 +210,13 @@ def main():
             print(f"\n {step}")
             speak(step)
             chat_history.append({"role": "assistant", "content": step})
-        elif command_class == "4":
-            print("silakan bertanya")
         elif command_class == "5":
             print("Memulai waktu")
         else:
-            speak("Perintah tidak dikenali. Ucapkan lanjut atau selesai")
-
-
-
-
+            answer = question(resep_text, command)
+            print(answer)
+            speak(answer)
+            chat_history.append(({"role": "assistant", "content": answer}))
 
 if __name__ == "__main__":
     main()
